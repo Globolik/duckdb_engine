@@ -15,6 +15,7 @@ from typing import (
 )
 
 import duckdb
+import fsspec
 import sqlalchemy
 from sqlalchemy import pool, text
 from sqlalchemy import types as sqltypes
@@ -250,6 +251,7 @@ class Dialect(PGDialect_psycopg2):
     def connect(self, *cargs: Any, **cparams: Any) -> "Connection":
         core_keys = get_core_config()
         preload_extensions = cparams.pop("preload_extensions", [])
+        fs_register = cparams.pop("fs_register", False)
         config = cparams.setdefault("config", {})
         config.update(cparams.pop("url_config", {}))
 
@@ -261,6 +263,8 @@ class Dialect(PGDialect_psycopg2):
             config["custom_user_agent"] = user_agent
 
         conn = duckdb.connect(*cargs, **cparams)
+        if fs_register:
+            conn.register_filesystem(fsspec.filesystem(fs_register))
 
         for extension in preload_extensions:
             conn.execute(f"LOAD {extension}")
